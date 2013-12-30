@@ -504,8 +504,11 @@ public class MongoPersistor extends BusModBase implements Handler<Message<JsonOb
   }
 
   private DBObject jsonToDBObject(JsonObject object) {
-    return new BasicDBObject(object.toMap());
+    String query = object.getString("query");
+    if (query == null) {
+      return new BasicDBObject(object.toMap());
+    } else {
+      return MQLParser.apply().parse(query);      
+    }
   }
-
 }
-

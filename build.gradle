@@ -1,5 +1,8 @@
 apply from: "gradle/setup.gradle"
 apply from: "gradle/vertx.gradle"
+apply plugin: "scala"
+
+ext.scala_version = '2.10.3'
 
 /*
 Usage:
@@ -52,6 +55,8 @@ dependencies {
   provided "com.foo:foo-lib:1.0.1" - if you DON'T want it to be packaged in the module zip
    */
   compile "org.mongodb:mongo-java-driver:$mongoVersion"
+  compile 'org.scala-lang:scala-library:2.10.3'
+  compile 'org.scala-lang:scala-compiler:2.10.3'
 }
 
 test {
@@ -61,6 +66,18 @@ test {
   */
 
 }
+
+/*
+sourceSets {
+  main.scala.srcDirs  'src/scala'
+  test.scala.srcDirs 'test/scala'
+}
+*/
+
+//http://chrismarks.wordpress.com/2013/07/31/compiling-a-mixed-scala-project-with-gradle/
+//The compileScala task compiles both the Scala and Java source together correctly.
+sourceSets.main.scala.srcDir "src/main/java"
+sourceSets.main.java.srcDirs = []
 
 /*
 If you're uploading stuff to Maven, Gradle needs to generate a POM.
