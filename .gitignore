@@ -10,3 +10,13 @@ bin
 build
 out
 /mods
+
+/mod-mongo-persistor.ipr
+
+/mod-mongo-persistor.iws
+
+/.cache
+
+/classes/
+
+/test-classes/

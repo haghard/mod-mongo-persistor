@@ -79,6 +79,17 @@ sourceSets {
 sourceSets.main.scala.srcDir "src/main/java"
 sourceSets.main.java.srcDirs = []
 
+repositories {
+  mavenCentral()
+  mavenLocal()
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer { repository(url: localRepo) }
+  }
+}
+
 /*
 If you're uploading stuff to Maven, Gradle needs to generate a POM.
 Please edit the details below.
