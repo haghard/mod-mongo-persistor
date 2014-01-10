@@ -131,6 +131,24 @@ public class PersistorQueryTest extends TestVerticle {
             }
           });
         }
+
+        //document with complex field
+        JsonObject insertJson0 =
+            new JsonObject().putString("collection", TESTCOLL2)
+                .putString("action", "save").putObject("document", new JsonObject()
+                .putString("_id", "wer326324wey5u45u")
+                .putObject("person", new JsonObject()
+                    .putString("name", "Sam")
+                    .putNumber("age", 56)
+                    .putNumber("temperature", 35.6f)));
+
+        eb.send("test.persistor", insertJson0, new Handler<Message<JsonObject>>() {
+          public void handle(Message<JsonObject> reply) {
+            assertEquals("ok", reply.body().getString("status"));
+            System.out.print("INSERTED");
+          }
+        });
+
       }
     });
 
@@ -211,7 +229,6 @@ public class PersistorQueryTest extends TestVerticle {
       }
     });
 
-
     //  _id $in { X, Y, Z }
     final JsonObject in3Query = new JsonObject()
         .putString("collection", TESTCOLL2).putString("action", "find")
@@ -224,9 +241,25 @@ public class PersistorQueryTest extends TestVerticle {
         assertEquals("ok", reply.body().getString("status"));
         JsonArray resultArray = reply.body().getArray("results");
         assertEquals(3, resultArray.size());
+      }
+    });
+
+    // person.name $eq "Sam"
+    final JsonObject cmpQuery = new JsonObject()
+        .putString("collection", TESTCOLL2).putString("action", "find")
+        .putObject("matcher", new JsonObject()
+            .putString("query", " person.name $eq \"Sam\" person.age $lt 60 "));
+
+    eb.send("test.persistor", cmpQuery, new Handler<Message<JsonObject>>() {
+      @Override
+      public void handle(Message<JsonObject> reply) {
+        assertEquals("ok", reply.body().getString("status"));
+        JsonArray resultArray = reply.body().getArray("results");
+        assertEquals(1, resultArray.size());
         testComplete();
       }
     });
+
   }
 
   private static String seq(String[] ids) {

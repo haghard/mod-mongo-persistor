@@ -134,7 +134,14 @@ class MQLParser extends JavaTokenParsers with PackratParsers {
     }
   }
 
-  lazy val separateFieldConditions: P[(String, BasicDBObject)] = ident ~ rep1(predicate) ^^ {
+  lazy val field : P[String] = ident ~ rep("." ~> ident)  ^^ {
+    case start ~ other => other match {
+      case Nil => start
+      case _ => start + "." + other.mkString(".")
+    }
+  }
+
+  lazy val separateFieldConditions: P[(String, BasicDBObject)] = field ~ rep1(predicate) ^^ {
     case field ~ preds => {
       val start = preds.head
       val dbObject = new BasicDBObject(start.symbol, start.value.value)
