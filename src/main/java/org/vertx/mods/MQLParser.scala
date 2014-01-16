@@ -21,6 +21,7 @@ object MQLSyntax {
   case class MQLeqOperation(val symbol: String = "$eq") extends MQLOperation
   case class MQLneOperation(val symbol: String = "$ne") extends MQLOperation
   case class MQLinOperation(val symbol: String = "$in") extends MQLOperation
+  case class MQLninOperation(val symbol: String = "$nin") extends MQLOperation
 
   sealed trait MQLValue extends MQLExpression {
     type T <: AnyRef
@@ -67,7 +68,7 @@ class MQLParser extends JavaTokenParsers with PackratParsers {
 
   type P[T] = PackratParser[T]
 
-  lazy val operation: P[MQLOperation] = ("$gt" | "$gte" | "$ne" | "$lt" | "$lte" | "$eq" | "$in" ) ^^ {
+  lazy val operation: P[MQLOperation] = ("$gt" | "$gte" | "$ne" | "$nin" | "$lt" | "$lte" | "$eq" | "$in" ) ^^ {
     case "$gt" => MQLgtOperation()
     case "$gte" => MQLgteOperation()
     case "$ne" => MQLneOperation()
@@ -75,6 +76,7 @@ class MQLParser extends JavaTokenParsers with PackratParsers {
     case "$lte" => MQLlteOperation()
     case "$eq" => MQLeqOperation()
     case "$in" => MQLinOperation()
+    case "$nin" => MQLninOperation()
     case f => throw new UnsupportedOperationException(s"unsupported field ${f} ")
   }
 
@@ -141,7 +143,7 @@ class MQLParser extends JavaTokenParsers with PackratParsers {
     }
   }
 
-  lazy val separateFieldConditions: P[(String, BasicDBObject)] = field ~ rep1(predicate) ^^ {
+  lazy val separateFieldConditions: P[(String, BasicDBObject)] =  field ~ rep1(predicate) ^^ {
     case field ~ preds => {
       val start = preds.head
       val dbObject = new BasicDBObject(start.symbol, start.value.value)
@@ -167,7 +169,7 @@ class MQLParser extends JavaTokenParsers with PackratParsers {
     }
   }
 
-  lazy val mongoQueryLang: P[BasicDBObject] = separateFieldConditions ~ rep(separateFieldConditions) ^^ {
+  lazy val querySelectors: P[BasicDBObject] = separateFieldConditions ~ rep(separateFieldConditions) ^^ {
     case first ~ others => {
       if (others.isEmpty) {
         createDbObject(first)
@@ -189,8 +191,29 @@ class MQLParser extends JavaTokenParsers with PackratParsers {
     }
   }
 
+  lazy val logical: P[String] = ("$or" | "$and" | "$not" | "$nor") ^^ { case v => v }
+
+
+  lazy val conditionChainArray: P[java.util.List[BasicDBObject]] = "{" ~> querySelectors ~ "}" ~ rep("," ~ "{" ~> querySelectors <~ "}") ^^ {
+    case first ~ sep ~ other => {
+      if (other.isEmpty)
+        java.util.Arrays.asList(first)
+      else {
+        import scala.collection.JavaConversions._
+        val others: java.util.List[BasicDBObject] = first :: other
+        others
+      }
+    }
+  }
+
+  lazy val logicalQuerySelectors: P[BasicDBObject] = logical ~ ":" ~ "[" ~ conditionChainArray <~ "]" ^^ {
+    case l ~ sep0 ~ sep2 ~ c => new BasicDBObject(l, c)
+  }
+
+  lazy val q: P[BasicDBObject] = logicalQuerySelectors | querySelectors
+
   def parse(source: String): BasicDBObject = {
-    val parser: PackratParser[BasicDBObject] = phrase(mongoQueryLang)
+    val parser: PackratParser[BasicDBObject] = phrase(q)
     import scala.util.parsing.input.CharSequenceReader;
     parser.apply(new PackratReader(new CharSequenceReader(source.toCharArray))) match {
       case Success(dbObject, _) => println(dbObject.toString); dbObject;

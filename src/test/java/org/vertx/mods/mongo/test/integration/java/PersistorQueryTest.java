@@ -139,6 +139,7 @@ public class PersistorQueryTest extends TestVerticle {
                 .putString("_id", "wer326324wey5u45u")
                 .putObject("person", new JsonObject()
                     .putString("name", "Sam")
+                    .putString("sname", "Shidle")
                     .putNumber("age", 56)
                     .putNumber("temperature", 35.6f)));
 
@@ -179,7 +180,6 @@ public class PersistorQueryTest extends TestVerticle {
         assertEquals("ok", reply.body().getString("status"));
         JsonArray resultArray = reply.body().getArray("results");
         assertEquals(1, resultArray.size());
-        testComplete();
       }
     });
 
@@ -256,10 +256,39 @@ public class PersistorQueryTest extends TestVerticle {
         assertEquals("ok", reply.body().getString("status"));
         JsonArray resultArray = reply.body().getArray("results");
         assertEquals(1, resultArray.size());
-        testComplete();
       }
     });
 
+    // $or: [ { person.name $eq "Sam" person.age $lt 60 }, { person.sname $eq "Shidle" person.age $lt 60 } ]
+    final JsonObject orQuery = new JsonObject()
+        .putString("collection", TESTCOLL2).putString("action", "find")
+        .putObject("matcher", new JsonObject()
+            .putString("query", " $or: [ { person.name $eq \"Samur\" person.age $lt 60 }, { person.sname $eq \"Shidle\" person.age $lt 60 } ]"));
+
+    eb.send("test.persistor", orQuery, new Handler<Message<JsonObject>>() {
+      @Override
+      public void handle(Message<JsonObject> reply) {
+        assertEquals("ok", reply.body().getString("status"));
+        JsonArray resultArray = reply.body().getArray("results");
+        assertEquals(1, resultArray.size());
+      }
+    });
+
+    // $and: [ { person.name $eq "Sam" }, { person.sname $eq "Shidle" } ]
+    final JsonObject andQuery = new JsonObject()
+        .putString("collection", TESTCOLL2).putString("action", "find")
+        .putObject("matcher", new JsonObject()
+            .putString("query", " $and: [ { person.name $eq \"Sam\" }, { person.sname $eq \"Shidle\" } ]"));
+
+    eb.send("test.persistor", andQuery, new Handler<Message<JsonObject>>() {
+      @Override
+      public void handle(Message<JsonObject> reply) {
+        assertEquals("ok", reply.body().getString("status"));
+        JsonArray resultArray = reply.body().getArray("results");
+        assertEquals(1, resultArray.size());
+        testComplete();
+      }
+    });
   }
 
   private static String seq(String[] ids) {
